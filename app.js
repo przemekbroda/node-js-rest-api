@@ -4,6 +4,7 @@ const authRoutes = require('./routes/auth');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const path = require('path');
+const urls = require('./private/urls');
 const multer = require('multer'); //used for file upload
 const cors = require('cors');
 
@@ -38,13 +39,15 @@ app.use((error, req, res ,next) => {
     console.log(error);
     const status = error.statusCode;
     const message = error.message;
+    const data = error.data;
 
     res.status(status).json({
-        message: message
+        message: message,
+        data: data
     });
 })
 
-mongoose.connect('', {useUnifiedTopology: true, useNewUrlParser: true}, (err) => {
+mongoose.connect(urls.mongodbUrl, {useUnifiedTopology: true, useNewUrlParser: true}, (err) => {
     if (err) {
         console.log(err);
     }
