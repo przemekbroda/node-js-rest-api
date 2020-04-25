@@ -1,7 +1,9 @@
 const { validationResult } = require('express-validator');
 const Post = require('../models/post');
+const User = require('../models/user');
 const Path = require('path');
 const fs = require('fs');
+const mongoose = require('mongoose');
 
 exports.getPosts = async (req, res, next) => {
     try {
@@ -51,16 +53,22 @@ exports.createPost = async (req, res, next) => {
             title: title,
             content: content,
             imageUrl: imageUrl,
-            creator: {
-                name: 'Przemek'
-            }
+            creator: req.userId,
         });
 
         post = await post.save()
 
+        let creator = await User.findById(req.userId).exec();
+        await User.updateOne({_id: req.userId}, {
+            $push: {
+                posts: mongoose.Types.ObjectId(post._id)
+            }
+        }).exec()
+
         return res.status(201).json({
             message: 'Post created successfully',
-            post: post
+            post: post,
+            creator: { _id: creator._id, name: creator.name}
         });
     } catch (error) {
         if (!error.statusCode) {
@@ -150,9 +158,20 @@ exports.deletePost = async (req, res, next) => {
             throw(error);
         }
 
+        if (post.creator.toString() !== req.userId) {
+            const error = new Error('Cannot remove a post');
+            error.statusCode = 404;
+            throw(error);
+        }
+
         clearImage(post.imageUrl);
 
         const deletedPost = await post.remove();
+        await User.updateOne({_id: req.userId}, {
+            $pull: {
+                posts: mongoose.Types.ObjectId(post._id)
+            }
+        }).exec()
         
         res.status(200).json({
             message: 'Post deleted',
